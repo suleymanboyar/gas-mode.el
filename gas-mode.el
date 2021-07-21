@@ -16,7 +16,7 @@
 (defvar gas-comments '("//" ("/\*" . "\*/") "#")
   "Available comments for AT&T syntax.")
 
-(defvar gas-initial-indent-regex '(".*:\\|\.section")
+(defvar gas-initial-indent-regex "\.*:\\|\\.section"
   "Element which should have less or null indentation, relies on `gas-initial-indent'
 to set the indentation needed")
 
@@ -41,7 +41,7 @@ to set the indentation needed")
   (let ((char (following-char)))
     (if (= char 32)
         (progn (forward-char)
-               (gas-next-char))
+               (gas-read-until-nonwhitespace))
       char)))
 
 (defvar gas-last-evaluated-token ""
@@ -51,11 +51,16 @@ to set the indentation needed")
   "Read a pseudo operator"
   (let ((char (gas-next-char)))
     (if (= char 32) t
-      (concat gas-last-evaluated-token (list char))
+      (setq gas-last-evaluated-token (concat gas-last-evaluated-token (list char)))
       (gas-read-pseudo-op))))
+
+(defun gas-read-token ()
+  ""
+  (message "not implemented yet"))
 
 (defun gas-next-token ()
   "Return the next token"
+  (setq gas-last-evaluated-token "")
   (let ((char (gas-read-until-nonwhitespace)))
     (cond ((= char 46)
            (gas-read-pseudo-op))
@@ -65,10 +70,11 @@ to set the indentation needed")
 (defun gas-indent-line ()
   "Indentation function"
   (interactive)
-  (let ((beg nil) (end nil))
-    (end-of-line)
-    (setq end (point))
-    (beginning-of-line)))
+  (beginning-of-line)
+  (gas-next-token)
+  (cond ((string-match-p gas-initial-indent-regex gas-last-evaluated-token)
+         (indent-line-to 0))
+        (t (message "Not 0 indent"))))
 
 ;;;###autoload
 (define-derived-mode gas-mode prog-mode "gas"
