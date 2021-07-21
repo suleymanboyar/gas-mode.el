@@ -30,51 +30,43 @@ to set the indentation needed")
   :type 'integer
   :group 'gas)
 
-(defun gas-next-char ()
-  "Return the next char"
-  (let ((char (following-char)))
-    (forward-char)
-    char))
-
-(defun gas-read-until-nonwhitespace ()
-  "Return the first character found that is not a whitespace"
+(defun gas-move-to-first-char ()
+  "Move point to the first character that is not a whitespace"
   (let ((char (following-char)))
     (if (= char 32)
         (progn (forward-char)
-               (gas-read-until-nonwhitespace))
+               (gas-move-to-first-char))
       char)))
 
 (defvar gas-last-evaluated-token ""
   "Last token evaluated for indentation calculation")
 
-(defun gas-read-pseudo-op ()
-  "Read a pseudo operator"
-  (let ((char (gas-next-char)))
-    (if (= char 32) t
-      (setq gas-last-evaluated-token (concat gas-last-evaluated-token (list char)))
-      (gas-read-pseudo-op))))
-
 (defun gas-read-token ()
-  ""
-  (message "not implemented yet"))
+  "Read a token"
+  (let ((char (following-char)))
+    (if (or
+         (= char 32)
+         (= char 10))
+        t
+      (setq gas-last-evaluated-token (concat gas-last-evaluated-token (list char)))
+      (forward-char)
+      (gas-read-token))))
 
 (defun gas-next-token ()
   "Return the next token"
   (setq gas-last-evaluated-token "")
-  (let ((char (gas-read-until-nonwhitespace)))
-    (cond ((= char 46)
-           (gas-read-pseudo-op))
-          (t
-           (gas-read-token)))))
+  (gas-move-to-first-char)
+  (gas-read-token))
 
 (defun gas-indent-line ()
   "Indentation function"
   (interactive)
-  (beginning-of-line)
-  (gas-next-token)
-  (cond ((string-match-p gas-initial-indent-regex gas-last-evaluated-token)
-         (indent-line-to 0))
-        (t (message "Not 0 indent"))))
+  (save-excursion
+    (beginning-of-line)
+    (gas-next-token)
+    (cond ((string-match-p gas-initial-indent-regex gas-last-evaluated-token)
+           (indent-line-to gas-initial-indent))
+          (t (indent-line-to gas-indentation)))))
 
 ;;;###autoload
 (define-derived-mode gas-mode prog-mode "gas"
