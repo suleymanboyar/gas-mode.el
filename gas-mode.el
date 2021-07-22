@@ -66,7 +66,9 @@ to set the indentation needed")
     (gas-next-token)
     (cond ((string-match-p gas-initial-indent-regex gas-last-evaluated-token)
            (indent-line-to gas-initial-indent))
-          (t (indent-line-to gas-indentation)))))
+          (t (indent-line-to gas-indentation))))
+  (if (equal gas-last-evaluated-token "")
+      (move-to-column gas-indentation)))
 
 ;;;###autoload
 (define-derived-mode gas-mode prog-mode "gas"
