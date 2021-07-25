@@ -38,6 +38,19 @@ to set the indentation needed")
                (gas-move-to-first-char))
       char)))
 
+(defvar gas-mode-syntax-table
+  (let ((table (make-syntax-table)))
+    (modify-syntax-entry ?$ "'" table)
+    (modify-syntax-entry ?% "'" table)
+    (modify-syntax-entry ?\' "\"" table)
+    (modify-syntax-entry ?\" "\"" table)
+    (modify-syntax-entry ?/ ". 124b" table)
+    (modify-syntax-entry ?* ". 23b" table)
+    (modify-syntax-entry ?\n "> 4c" table)
+    (modify-syntax-entry ?# ". 1c" table)
+    table)
+  "Syntax table for gas mode")
+
 (defvar gas-last-evaluated-token ""
   "Last token evaluated for indentation calculation")
 
@@ -77,6 +90,7 @@ to set the indentation needed")
   (setq-local major-mode 'gas-mode)
   (setq-local mode-name "gas")
   (setq-local electric-indent-inhibit t)
-  (setq-local indent-line-function 'gas-indent-line))
+  (setq-local indent-line-function 'gas-indent-line)
+  (set-syntax-table gas-mode-syntax-table))
 
 (provide 'gas-mode)
