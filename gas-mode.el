@@ -27,24 +27,16 @@ to set the indentation needed")
   :type 'integer
   :group 'gas)
 
-(defun gas-move-to-first-char ()
-  "Move point to the first character that is not a whitespace"
-  (let ((char (following-char)))
-    (if (= char 32)
-        (progn (forward-char)
-               (gas-move-to-first-char))
-      char)))
-
 (defvar gas-mode-syntax-table
   (let ((table (make-syntax-table)))
     (modify-syntax-entry ?$ "'" table)
     (modify-syntax-entry ?% "'" table)
     (modify-syntax-entry ?\' "\"" table)
     (modify-syntax-entry ?\" "\"" table)
-    (modify-syntax-entry ?/ ". 124b" table)
+    (modify-syntax-entry ?/ ". 124" table)
     (modify-syntax-entry ?* ". 23b" table)
-    (modify-syntax-entry ?# ". 1c" table)
-    (modify-syntax-entry ?\n "> 4c" table)
+    (modify-syntax-entry ?# "<" table)
+    (modify-syntax-entry ?\n ">" table)
     table)
   "Syntax table for gas mode")
 
@@ -72,6 +64,10 @@ to set the indentation needed")
     "cli" "std" "cld" "stc" "clc" "cmc" "sysenter"
     "sysexit" "rdtsc" "int")
   "Instructions used in assembly programming")
+
+(defconst gas-mode-instructions-regex
+  (regexp-opt gas-mode-instructions)
+  "regex of `gas-mode-instructions'")
 
 (defconst gas-mode-pseudo-ops
   '(".abort" ".align" ".altmacro" ".ascii" ".asciz"
@@ -121,14 +117,22 @@ to set the indentation needed")
   "Register available for gas (x86 and x86_64 registerl")
 
 (defconst gas-mode-font-lock
-  `((,(regexp-opt gas-mode-instructions) . 'font-lock-builtin-face)
-    (,(regexp-opt gas-mode-pseudo-ops) . (0 font-lock-builtin-face t))
-    ("[a-zA-Z0-9]+?:" . (0 font-lock-variable-name-face t))
-    ("%[a-zA-Z0-9]+" . (0 font-lock-variable-name-face t)))
+  `((,(regexp-opt gas-mode-pseudo-ops) . font-lock-builtin-face)
+    ("[a-zA-Z0-9]+?:" . font-lock-variable-name-face)
+    ("%[a-zA-Z0-9]+" . font-lock-variable-name-face)
+    (,(concat "\\b" gas-mode-instructions-regex "\\b") . font-lock-builtin-face)) ;; match the exact instruction
   "Keywords used by the AT&T assembly syntax")
 
 (defvar gas-last-evaluated-token ""
   "Last token evaluated for indentation calculation")
+
+(defun gas-move-to-first-char ()
+  "Move point to the first character that is not a whitespace"
+  (let ((char (following-char)))
+    (if (= char 32)
+        (progn (forward-char)
+               (gas-move-to-first-char))
+      char)))
 
 (defun gas-read-token ()
   "Read a token"
