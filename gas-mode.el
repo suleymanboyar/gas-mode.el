@@ -1,29 +1,54 @@
-;;; minimal-gas-mode.el --- mode for editing assembly code with AT&T sintax
+;;; minimal-gas-mode.el --- Mode for editing assembly code with AT&T sintax -*- lexical-biding: t -*-
 
 ;; Copyright (C) 2021 Bryan Hernández
 
 ;; Author: Bryan Hernández <masterenoc@tutamail.com>
 ;; Keywords: languages
+;; Version: 0.1
 
 ;;; Commentary:
 
+;; Provides font-locking and indentation support for Assembly code with AT&T
+;; syntax, usually code written for GAS (Gnu Assembler).
+;;
+;; If you are installing manually, you should add the following code to your
+;; .emacs file:
+;;      (require 'gas-mode)
+;;      (add-to-list 'auto-mode-alist '("\\.asm\\'" . gas-mode))
+;;
+;; Currently works with basic AT&T syntax, having basic font-locking and
+;; indentation.
+;;
+;; TODO list of improvements or features:
+;;
+;;   - Improve indentation command to indent tags and .section to either
+;;     the beginning of the line (depends on the value of `gas-initial-indent')
+;;     or to the normal indentation (`gas-indentation') on the second time the
+;;     command is executed.
+;;
+;;   - Add blinking and indentation to some nested directives like '.macro'.
+;;
+;;   - Add support for company.
+;;
+;;   - Add support for imenu.
+
 ;;; Code:
 (defgroup gas nil
-  "Customization for assembly code with AT&T syntax"
+  "Major mode for editing assembly code with AT&T syntax."
   :prefix "gas-"
   :group 'languages)
 
 (defvar gas-initial-indent-regex "\.*:\\|\\.section"
-  "Element which should have less or null indentation, relies on `gas-initial-indent'
-to set the indentation needed")
+  "Regex that matches elements that should have less or null indentation,
+relies on `gas-initial-indent'to set the indentation needed.")
 
 (defcustom gas-initial-indent 0
-  "This is the indent use for tags and .section directive"
+  "The indentation to use for the elements matched with `gas-initial-indent-regex'"
   :type 'integer
   :group 'gas)
 
 (defcustom gas-indentation 8
-  "Indentation for each line"
+  "The normal indentation used for instructions and directives"
   :type 'integer
   :group 'gas)
 
@@ -39,7 +64,7 @@ to set the indentation needed")
     (modify-syntax-entry ?\n ">" table)
     (modify-syntax-entry ?_ "w" table)
     table)
-  "Syntax table for gas mode")
+  "Syntax table to use in Gas mode")
 
 (defconst gas-instructions
   ;; Probably need t and s suffix
@@ -68,7 +93,7 @@ to set the indentation needed")
 
 (defconst gas-instructions-regex
   (regexp-opt gas-instructions)
-  "regex of `gas-instructions'")
+  "Regex that matches all the elements in `gas-instructions'")
 
 (defconst gas-pseudo-ops
   '(".abort" ".align" ".altmacro" ".ascii" ".asciz"
@@ -95,7 +120,7 @@ to set the indentation needed")
     ".vtable_entry" ".vtable_inherit" ".warning" ".weak"
     ".weakref" ".word" ".zero" ".2byte" ".4byte"
     ".8byte" ".bss" ".rodata")
-  "Assembler directives (a.k.a Pseudo operators) used by gas")
+  "Assembler directives (a.k.a Pseudo operators) used by Gas")
 
 (defconst gas-registers
   '("%rax" "%eax" "%ax" "%ah" "%al" "%rcx" "%ecx"
@@ -115,14 +140,14 @@ to set the indentation needed")
     "%zmm1" "%zmm2" "%zmm3" "%zmm4" "%zmm5" "%zmm6"
     "%zmm7" "%zmm8" "%zmm9" "%zmm10" "%zmm11"
     "%zmm12" "%zmm13" "%zmm14" "%zmm15")
-  "Register available for gas (x86 and x86_64 registerl")
+  "Register available for assembly programming (at least in x86 and x86_64 registerl")
 
 (defconst gas-mode-font-lock
   `((,(regexp-opt gas-pseudo-ops) . font-lock-builtin-face)
     ("[a-zA-Z0-9_]+?:" . font-lock-variable-name-face)
     ("%[a-zA-Z0-9]+" . font-lock-variable-name-face)
     (,(concat "\\b" gas-instructions-regex "\\b") . font-lock-builtin-face)) ;; match the exact instruction
-  "Keywords used by the AT&T assembly syntax")
+  "Font-lock regexes used to fontify assembly code with AT&T syntax ")
 
 (defvar gas-last-evaluated-token ""
   "Last token evaluated for indentation calculation")
@@ -136,7 +161,8 @@ to set the indentation needed")
       char)))
 
 (defun gas-read-token ()
-  "Read a token"
+  "Read a token of text. It returns when it finds a newline or a space character
+meaning the end of the token and sets `gas-last-evaluated-token' char by char."
   (let ((char (following-char)))
     (if (or
          (= char 32)
@@ -147,13 +173,13 @@ to set the indentation needed")
       (gas-read-token))))
 
 (defun gas-next-token ()
-  "Return the next token"
+  "Sets point to the beginning of the next token"
   (setq gas-last-evaluated-token "")
   (gas-move-to-first-char)
   (gas-read-token))
 
 (defun gas-indent-line ()
-  "Indentation function"
+  "Indentation functions used to calculate the indentation level."
   (interactive)
   (save-excursion
     (beginning-of-line)
