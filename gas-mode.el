@@ -37,10 +37,11 @@ to set the indentation needed")
     (modify-syntax-entry ?* ". 23b" table)
     (modify-syntax-entry ?# "<" table)
     (modify-syntax-entry ?\n ">" table)
+    (modify-syntax-entry ?_ "w" table)
     table)
   "Syntax table for gas mode")
 
-(defconst gas-mode-instructions
+(defconst gas-instructions
   ;; Probably need t and s suffix
   '("mov" "movb" "movq" "movl" "movw" "xchg" "xchgb"
     "xchgw" "xchgl" "xchgq" "cmpxchg" "movz" "movzb"
@@ -62,14 +63,14 @@ to set the indentation needed")
     "xor" "not" "shr" "shl" "sar" "sal" "shld" "shrd"
     "ror" "rol" "rcr" "rcl" "pushad" "popad" "sti"
     "cli" "std" "cld" "stc" "clc" "cmc" "sysenter"
-    "sysexit" "rdtsc" "int")
+    "sysexit" "rdtsc" "int" "leave")
   "Instructions used in assembly programming")
 
-(defconst gas-mode-instructions-regex
-  (regexp-opt gas-mode-instructions)
-  "regex of `gas-mode-instructions'")
+(defconst gas-instructions-regex
+  (regexp-opt gas-instructions)
+  "regex of `gas-instructions'")
 
-(defconst gas-mode-pseudo-ops
+(defconst gas-pseudo-ops
   '(".abort" ".align" ".altmacro" ".ascii" ".asciz"
     ".attach_to_group" ".balign" ".bundle_align_mode"
     ".byte" ".cfi_startproc" ".cfi_endproc" ".comm"
@@ -96,7 +97,7 @@ to set the indentation needed")
     ".8byte" ".bss" ".rodata")
   "Assembler directives (a.k.a Pseudo operators) used by gas")
 
-(defconst gas-mode-registers
+(defconst gas-registers
   '("%rax" "%eax" "%ax" "%ah" "%al" "%rcx" "%ecx"
     "%cx" "%cx" "%ch" "%cl" "%rdx" "%edx" "%dx"
     "%dh" "%dl" "%rbx" "%ebx" "%bx" "%bh" "%bl"
@@ -117,10 +118,10 @@ to set the indentation needed")
   "Register available for gas (x86 and x86_64 registerl")
 
 (defconst gas-mode-font-lock
-  `((,(regexp-opt gas-mode-pseudo-ops) . font-lock-builtin-face)
-    ("[a-zA-Z0-9]+?:" . font-lock-variable-name-face)
+  `((,(regexp-opt gas-pseudo-ops) . font-lock-builtin-face)
+    ("[a-zA-Z0-9_]+?:" . font-lock-variable-name-face)
     ("%[a-zA-Z0-9]+" . font-lock-variable-name-face)
-    (,(concat "\\b" gas-mode-instructions-regex "\\b") . font-lock-builtin-face)) ;; match the exact instruction
+    (,(concat "\\b" gas-instructions-regex "\\b") . font-lock-builtin-face)) ;; match the exact instruction
   "Keywords used by the AT&T assembly syntax")
 
 (defvar gas-last-evaluated-token ""
@@ -172,6 +173,11 @@ to set the indentation needed")
   (setq-local electric-indent-inhibit t)
   (setq-local indent-line-function 'gas-indent-line)
   (set-syntax-table gas-mode-syntax-table)
+  (setq-local comment-column 40)
+  (setq-local comment-start "#")
+  (setq-local comment-end "")
+  (setq-local comment-padding 1)
+  (setq-local comment-multi-line t)
   (setq-local font-lock-defaults '(gas-mode-font-lock nil t nil nil)))
 
 (provide 'gas-mode)
