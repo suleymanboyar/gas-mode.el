@@ -88,7 +88,8 @@ relies on `gas-initial-indent'to set the indentation needed.")
     "xor" "not" "shr" "shl" "sar" "sal" "shld" "shrd"
     "ror" "rol" "rcr" "rcl" "pushad" "popad" "sti"
     "cli" "std" "cld" "stc" "clc" "cmc" "sysenter"
-    "sysexit" "rdtsc" "int" "leave")
+    "sysexit" "rdtsc" "int" "leave" "movsd" "addsd"
+    "subsd" "mulsd" "divsd" "sqrtsd")
   "Instructions used in assembly programming")
 
 (defconst gas-pseudo-ops
@@ -146,7 +147,8 @@ meaning the end of the token and sets `gas-last-evaluated-token' char by char."
   (let ((char (following-char)))
     (if (or
          (= char 32)
-         (= char 10))
+         (= char 10)
+         (= char 0))
         t
       (setq gas-last-evaluated-token (concat gas-last-evaluated-token (list char)))
       (forward-char)
