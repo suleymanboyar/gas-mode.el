@@ -89,7 +89,10 @@ relies on `gas-initial-indent'to set the indentation needed.")
     "ror" "rol" "rcr" "rcl" "pushad" "popad" "sti"
     "cli" "std" "cld" "stc" "clc" "cmc" "sysenter"
     "sysexit" "rdtsc" "int" "leave" "movsd" "addsd"
-    "subsd" "mulsd" "divsd" "sqrtsd")
+    "subsd" "mulsd" "divsd" "sqrtsd" "leaq" "subq"
+    "pushq" "bts" "btr" "bt" "btsq" "btsb" "btsl"
+    "btsw" "btq" "btw" "btl" "btb" "btrq" "btr"
+    "btrb" "brtw" "btrl")
   "Instructions used in assembly programming")
 
 (defconst gas-pseudo-ops
@@ -116,7 +119,7 @@ relies on `gas-initial-indent'to set the indentation needed.")
     ".tls_common" ".type" ".uleb128" ".val" ".version"
     ".vtable_entry" ".vtable_inherit" ".warning" ".weak"
     ".weakref" ".word" ".zero" ".2byte" ".4byte"
-    ".8byte" ".bss" ".rodata")
+    ".8byte" ".bss" ".rodata" ".globl" ".endm")
   "Assembler directives (a.k.a Pseudo operators) used by Gas")
 
 (defconst gas-instructions-regex
