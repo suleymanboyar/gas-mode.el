@@ -38,12 +38,15 @@
   :prefix "gas-"
   :group 'languages)
 
-(defvar gas-initial-indent-regex "\.*:\\|\\.section"
+(defvar gas-opening-blocks-regex (regexp-opt '(".section" ".macro" ".rept"))
   "Regex that matches elements that should have less or null indentation,
 relies on `gas-initial-indent'to set the indentation needed.")
 
+(defvar gas-closing-blocks-regex (regexp-opt '(".endm" ".endr"))
+  "Regex of the directives use to close another directives")
+
 (defcustom gas-initial-indent 0
-  "The indentation to use for the elements matched with `gas-initial-indent-regex'"
+  "The indentation to use for the elements matched with `gas-opening-blocks-regex'"
   :type 'integer
   :group 'gas)
 
@@ -92,7 +95,7 @@ relies on `gas-initial-indent'to set the indentation needed.")
     "subsd" "mulsd" "divsd" "sqrtsd" "leaq" "subq"
     "pushq" "bts" "btr" "bt" "btsq" "btsb" "btsl"
     "btsw" "btq" "btw" "btl" "btb" "btrq" "btr"
-    "btrb" "brtw" "btrl")
+    "btrb" "brtw" "btrl" "syscall")
   "Instructions used in assembly programming")
 
 (defconst gas-pseudo-ops
@@ -136,6 +139,12 @@ relies on `gas-initial-indent'to set the indentation needed.")
 (defvar gas-last-evaluated-token ""
   "Last token evaluated for indentation calculation")
 
+(defvar gas-consecutive-indentation 0
+  "Count the times `indent-for-tab-command' is executed in the same line")
+
+(defvar gas-current-indentation 0
+  "Helps to avoid calculation when the indentation is trivial")
+
 (defun gas-move-to-first-char ()
   "Move point to the first character that is not a whitespace"
   (let ((char (following-char)))
@@ -163,17 +172,60 @@ meaning the end of the token and sets `gas-last-evaluated-token' char by char."
   (gas-move-to-first-char)
   (gas-read-token))
 
+(defun gas-calculate-indentation ()
+  "Calculate de indentation based on the previous line and sets `gas-current-indentation'
+and `gas-last-evaluated-token'"
+  (save-excursion
+    (let ((line (forward-line -1)) (indt (current-indentation)))
+      ;; If beginning of buffer is reached should indent to 0
+      ;; since it did not find any suitable line
+      (if (= line -1)
+          (progn
+            (setq gas-current-indentation 0)
+            (setq gas-last-evaluated-token ""))
+        (gas-next-token)
+        ;; recursively look for a non-empty line to calculate the indentation
+        (if (equal gas-last-evaluated-token "")
+            (gas-calculate-indentation)
+          (setq gas-current-indentation indt))))))
+
 (defun gas-indent-line ()
   "Indentation functions used to calculate the indentation level."
   (interactive)
+
+  ;; clean `gas-consecutive-indentation' if last command executed is not itself
+  (if (eq last-command 'indent-for-tab-command)
+      (setq gas-consecutive-indentation (+ 1 gas-consecutive-indentation))
+    (setq gas-consecutive-indentation 0))
+
+  ;; calculate indentation using the previous line token
+  (gas-calculate-indentation)
+
+  ;; Heuristic to determine if line needs more or less indentation
   (save-excursion
-    (beginning-of-line)
-    (gas-next-token)
-    (cond ((string-match-p gas-initial-indent-regex gas-last-evaluated-token)
-           (indent-line-to gas-initial-indent))
-          (t (indent-line-to gas-indentation))))
-  (if (equal gas-last-evaluated-token "")
-      (move-to-column gas-indentation)))
+    (if (not (= gas-consecutive-indentation 0)) ; should check if line is already in 'x' column to avoid that indentation
+        (indent-line-to (* gas-indentation gas-consecutive-indentation))
+      (if (string-match-p gas-opening-blocks-regex gas-last-evaluated-token)
+          (indent-line-to (+ gas-current-indentation gas-indentation))
+        (progn
+          (beginning-of-line)
+          (gas-next-token)              ; get token of the current line
+          (if (string-match-p gas-closing-blocks-regex gas-last-evaluated-token)
+              (indent-line-to (- gas-current-indentation gas-indentation))
+            (indent-line-to gas-current-indentation))))))
+
+  ;; move pointer to the beginning of the line if point is not there
+  (if (< (current-column) gas-current-indentation)
+      (move-to-column gas-current-indentation)))
+
+  ;; (save-excursion
+  ;;   (beginning-of-line)
+  ;;   (gas-next-token)
+  ;;   (cond ((string-match-p gas-opening-blocks-regex gas-last-evaluated-token)
+  ;;          (indent-line-to gas-initial-indent))
+  ;;         (t (indent-line-to gas-indentation))))
+  ;; (if (equal gas-last-evaluated-token "")
+  ;;     (move-to-column gas-indentation)))
 
 ;;;###autoload
 (define-derived-mode gas-mode prog-mode "gas"
