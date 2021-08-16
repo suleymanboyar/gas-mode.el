@@ -194,6 +194,13 @@ and `gas-last-evaluated-token'"
               (t
                (setq gas-current-indentation indt)))))))
 
+(defun gas-manual-indentation ()
+  "Manual indentation for lines. The indentation is a multiple of `gas-indentation' and
+is calculated depending how many times `indent-for-tab-command' is executed in a row"
+  (let ((indt (* gas-indentation (- gas-consecutive-indentation 1))))
+    (indent-line-to indt)
+    (setq gas-current-indentation indt)))
+
 (defun gas-indent-line ()
   "Indentation function used to calculate the indentation level."
   (interactive)
@@ -203,14 +210,14 @@ and `gas-last-evaluated-token'"
       (setq gas-consecutive-indentation (+ 1 gas-consecutive-indentation))
     (setq gas-consecutive-indentation 0))
 
-  (gas-calculate-indentation)
-
   ;; Heuristic to determine if line needs more or less indentation
   (save-excursion
-    (if (not (= gas-consecutive-indentation 0)) ; should check if line is already in 'x' column to avoid that indentation
-        (indent-line-to (* gas-indentation gas-consecutive-indentation))
+    (if (not (= gas-consecutive-indentation 0))
+        (gas-manual-indentation)
+      (gas-calculate-indentation)
       (beginning-of-line)
-      (gas-next-token)              ; get token of the current line
+      ;; get token of the current line and evaluate to set proper indentation
+      (gas-next-token)
       (if (string-match-p gas-closing-blocks-regex gas-last-evaluated-token)
           (indent-line-to (- gas-current-indentation gas-indentation))
         (indent-line-to gas-current-indentation))))
