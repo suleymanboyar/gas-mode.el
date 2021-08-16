@@ -184,13 +184,18 @@ and `gas-last-evaluated-token'"
             (setq gas-current-indentation 0)
             (setq gas-last-evaluated-token ""))
         (gas-next-token)
-        ;; recursively look for a non-empty line to calculate the indentation
-        (if (equal gas-last-evaluated-token "")
-            (gas-calculate-indentation)
-          (setq gas-current-indentation indt))))))
+
+        ;; if last line is empty (0 indent), recursively evaluate more lines
+        (cond ((equal gas-last-evaluated-token "")
+               (gas-calculate-indentation))
+
+              ((string-match-p gas-opening-blocks-regex gas-last-evaluated-token)
+               (setq gas-current-indentation (+ indt gas-indentation)))
+              (t
+               (setq gas-current-indentation indt)))))))
 
 (defun gas-indent-line ()
-  "Indentation functions used to calculate the indentation level."
+  "Indentation function used to calculate the indentation level."
   (interactive)
 
   ;; clean `gas-consecutive-indentation' if last command executed is not itself
@@ -198,34 +203,21 @@ and `gas-last-evaluated-token'"
       (setq gas-consecutive-indentation (+ 1 gas-consecutive-indentation))
     (setq gas-consecutive-indentation 0))
 
-  ;; calculate indentation using the previous line token
   (gas-calculate-indentation)
 
   ;; Heuristic to determine if line needs more or less indentation
   (save-excursion
     (if (not (= gas-consecutive-indentation 0)) ; should check if line is already in 'x' column to avoid that indentation
         (indent-line-to (* gas-indentation gas-consecutive-indentation))
-      (if (string-match-p gas-opening-blocks-regex gas-last-evaluated-token)
-          (indent-line-to (+ gas-current-indentation gas-indentation))
-        (progn
-          (beginning-of-line)
-          (gas-next-token)              ; get token of the current line
-          (if (string-match-p gas-closing-blocks-regex gas-last-evaluated-token)
-              (indent-line-to (- gas-current-indentation gas-indentation))
-            (indent-line-to gas-current-indentation))))))
+      (beginning-of-line)
+      (gas-next-token)              ; get token of the current line
+      (if (string-match-p gas-closing-blocks-regex gas-last-evaluated-token)
+          (indent-line-to (- gas-current-indentation gas-indentation))
+        (indent-line-to gas-current-indentation))))
 
-  ;; move pointer to the beginning of the line if point is not there
+  ;; move pointer to the beginning of the line if is before the indentation
   (if (< (current-column) gas-current-indentation)
       (move-to-column gas-current-indentation)))
-
-  ;; (save-excursion
-  ;;   (beginning-of-line)
-  ;;   (gas-next-token)
-  ;;   (cond ((string-match-p gas-opening-blocks-regex gas-last-evaluated-token)
-  ;;          (indent-line-to gas-initial-indent))
-  ;;         (t (indent-line-to gas-indentation))))
-  ;; (if (equal gas-last-evaluated-token "")
-  ;;     (move-to-column gas-indentation)))
 
 ;;;###autoload
 (define-derived-mode gas-mode prog-mode "gas"
