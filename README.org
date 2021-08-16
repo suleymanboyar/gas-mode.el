@@ -27,12 +27,17 @@ previous variable, e.g. the instructions or directive lines.
 
 * List of TODO improvements or features:
 
-   - Improve indentation command to indent tags and .section to either
-     the beginning of the line (depends on the value of `gas-initial-indent')
-     or to the normal indentation (`gas-indentation') on the second time the
-     command is executed.
+   - Keep improving indentation, tags can be tricky to indent since
+     its use can be in single line (as memory address identifier for a
+     value) or multi-line (as a memory address where a set of
+     instructions begin or like the single line use).
 
-   - Add blinking and indentation to some nested directives like ~.macro~.
+   - +Add blinking and indentation to some nested directives like
+     ~.macro~+. This idea is dropped since I noticed that I have to
+     use either smie for this mode or make a custom function that
+     evaluates all (or limited amount) the text before point after
+     each keystroke searching for its respective close parenthesis
+     (smie does this).
 
    - Add support for company.
 
