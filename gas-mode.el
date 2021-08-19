@@ -95,7 +95,9 @@ relies on `gas-initial-indent'to set the indentation needed.")
     "subsd" "mulsd" "divsd" "sqrtsd" "leaq" "subq"
     "pushq" "bts" "btr" "bt" "btsq" "btsb" "btsl"
     "btsw" "btq" "btw" "btl" "btb" "btrq" "btr"
-    "btrb" "brtw" "btrl" "syscall")
+    "btrb" "brtw" "btrl" "syscall" "rep" "stosb"
+    "stosw" "stosq" "cld" "cmpsb" "repe" "repne"
+    "scasb" "scasw" "cpuid" "ldmxcsr" "stmxcsr")
   "Instructions used in assembly programming")
 
 (defconst gas-pseudo-ops
