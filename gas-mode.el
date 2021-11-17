@@ -26,8 +26,6 @@
 ;;     or to the normal indentation (`gas-indentation') on the second time the
 ;;     command is executed.
 ;;
-;;   - Add blinking and indentation to some nested directives like '.macro'.
-;;
 ;;   - Add support for company.
 ;;
 ;;   - Add support for imenu.
@@ -97,7 +95,9 @@ relies on `gas-initial-indent'to set the indentation needed.")
     "btsw" "btq" "btw" "btl" "btb" "btrq" "btr"
     "btrb" "brtw" "btrl" "syscall" "rep" "stosb"
     "stosw" "stosq" "cld" "cmpsb" "repe" "repne"
-    "scasb" "scasw" "cpuid" "ldmxcsr" "stmxcsr")
+    "scasb" "scasw" "cpuid" "ldmxcsr" "stmxcsr"
+    "movss" "movups" "addps" "movdqa" "paddd"
+    "pextrd")
   "Instructions used in assembly programming")
 
 (defconst gas-pseudo-ops
@@ -139,7 +139,8 @@ relies on `gas-initial-indent'to set the indentation needed.")
   "Font-lock regexes used to fontify assembly code with AT&T syntax ")
 
 (defvar gas-last-evaluated-token ""
-  "Last token evaluated for indentation calculation")
+  "Last token evaluated for indentation calculation, used only for debugging and bug
+reports")
 
 (defvar gas-consecutive-indentation 0
   "Count the times `indent-for-tab-command' is executed in the same line")
@@ -155,44 +156,44 @@ relies on `gas-initial-indent'to set the indentation needed.")
                (gas-move-to-first-char))
       char)))
 
-(defun gas-read-token ()
-  "Read a token of text. It returns when it finds a newline or a space character
-meaning the end of the token and sets `gas-last-evaluated-token' char by char."
+(defun gas-read-token (&optional string)
+  "Read a token of text. It returns a token (if exists) from the current pointer position
+to the nearest newline or space character"
   (let ((char (following-char)))
     (if (or
          (= char 32)
          (= char 10)
          (= char 0))
-        t
-      (setq gas-last-evaluated-token (concat gas-last-evaluated-token (list char)))
+        (concat string)
       (forward-char)
-      (gas-read-token))))
+      (gas-read-token (append string `(,char))))))
 
 (defun gas-next-token ()
   "Sets point to the beginning of the next token"
-  (setq gas-last-evaluated-token "")
   (gas-move-to-first-char)
-  (gas-read-token))
+  ;; use `gas-sat-evaluated-token' for debugging purposes
+  (setq gas-last-evaluated-token (gas-read-token)))
 
 (defun gas-calculate-indentation ()
   "Calculate de indentation based on the previous line and sets `gas-current-indentation'
 and `gas-last-evaluated-token'"
   (save-excursion
-    (let ((line (forward-line -1)) (indt (current-indentation)))
+    (let ((line (forward-line -1)) (indt (current-indentation)) (token nil))
       ;; If beginning of buffer is reached should indent to 0
       ;; since it did not find any suitable line
       (if (= line -1)
           (progn
             (setq gas-current-indentation 0)
             (setq gas-last-evaluated-token ""))
-        (gas-next-token)
 
+        (setq token (gas-next-token))
         ;; if last line is empty (0 indent), recursively evaluate more lines
-        (cond ((equal gas-last-evaluated-token "")
+        (cond ((equal token "")
                (gas-calculate-indentation))
 
-              ((string-match-p gas-opening-blocks-regex gas-last-evaluated-token)
+              ((string-match-p gas-opening-blocks-regex token)
                (setq gas-current-indentation (+ indt gas-indentation)))
+
               (t
                (setq gas-current-indentation indt)))))))
 
@@ -214,15 +215,16 @@ is calculated depending how many times `indent-for-tab-command' is executed in a
 
   ;; Heuristic to determine if line needs more or less indentation
   (save-excursion
-    (if (not (= gas-consecutive-indentation 0))
-        (gas-manual-indentation)
-      (gas-calculate-indentation)
-      (beginning-of-line)
-      ;; get token of the current line and evaluate to set proper indentation
-      (gas-next-token)
-      (if (string-match-p gas-closing-blocks-regex gas-last-evaluated-token)
-          (indent-line-to (- gas-current-indentation gas-indentation))
-        (indent-line-to gas-current-indentation))))
+    (let ((token nil))
+      (if (not (= gas-consecutive-indentation 0))
+          (gas-manual-indentation)
+        (gas-calculate-indentation)
+        (beginning-of-line)
+        ;; get token of the current line and evaluate to set proper indentation
+        (setq token (gas-next-token))
+        (if (string-match-p gas-closing-blocks-regex token)
+            (indent-line-to (- gas-current-indentation gas-indentation))
+          (indent-line-to gas-current-indentation)))))
 
   ;; move pointer to the beginning of the line if is before the indentation
   (if (< (current-column) gas-current-indentation)
