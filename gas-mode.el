@@ -43,6 +43,9 @@ relies on `gas-initial-indent'to set the indentation needed.")
 (defvar gas-closing-blocks-regex (regexp-opt '(".endm" ".endr"))
   "Regex of the directives use to close another directives")
 
+(defvar gas-tag-regex "[.a-zA-Z0-9_]+?:"
+  "Regex of tags")
+
 (defcustom gas-initial-indent 0
   "The indentation to use for the elements matched with `gas-opening-blocks-regex'"
   :type 'integer
@@ -132,8 +135,8 @@ relies on `gas-initial-indent'to set the indentation needed.")
   "Regex that matches all the elements in `gas-instructions'")
 
 (defconst gas-mode-font-lock
-  `((,(regexp-opt gas-pseudo-ops) . font-lock-builtin-face)
-    ("[a-zA-Z0-9_]+?:" . font-lock-variable-name-face)
+  `((,gas-tag-regex . font-lock-variable-name-face)
+    (,(regexp-opt gas-pseudo-ops) . font-lock-builtin-face)
     ("%[a-zA-Z0-9]+" . font-lock-variable-name-face)
     (,(concat "\\b" gas-instructions-regex "\\b") . font-lock-builtin-face)) ;; match the exact instruction
   "Font-lock regexes used to fontify assembly code with AT&T syntax ")
@@ -169,10 +172,9 @@ to the nearest newline or space character"
       (gas-read-token (append string `(,char))))))
 
 (defun gas-next-token ()
-  "Sets point to the beginning of the next token"
+  "Moves pointer to the next non-whitespace character, read a token and return it"
   (gas-move-to-first-char)
-  ;; use `gas-sat-evaluated-token' for debugging purposes
-  (setq gas-last-evaluated-token (gas-read-token)))
+  (setq gas-last-evaluated-token (gas-read-token))) ;; set for debugging
 
 (defun gas-calculate-indentation ()
   "Calculate de indentation based on the previous line and sets `gas-current-indentation'
@@ -201,8 +203,7 @@ and `gas-last-evaluated-token'"
   "Manual indentation for lines. The indentation is a multiple of `gas-indentation' and
 is calculated depending how many times `indent-for-tab-command' is executed in a row"
   (let ((indt (* gas-indentation (- gas-consecutive-indentation 1))))
-    (indent-line-to indt)
-    (setq gas-current-indentation indt)))
+    (indent-line-to indt)))
 
 (defun gas-indent-line ()
   "Indentation function used to calculate the indentation level."
@@ -226,7 +227,7 @@ is calculated depending how many times `indent-for-tab-command' is executed in a
             (indent-line-to (- gas-current-indentation gas-indentation))
           (indent-line-to gas-current-indentation)))))
 
-  ;; move pointer to the beginning of the line if is before the indentation
+  ;; move pointer to the beginning of the line if it is before the indentation
   (if (< (current-column) gas-current-indentation)
       (move-to-column gas-current-indentation)))
 
