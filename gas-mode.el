@@ -176,60 +176,55 @@ to the nearest newline or space character"
   (gas-move-to-first-char)
   (setq gas-last-evaluated-token (gas-read-token))) ;; set for debugging
 
+(defun gas-calculate-indentation-from-prev-lines ()
+  "Calculate de indentation based on the previous lines"
+  (let ((token nil))
+    ;; If beginning of buffer is reached should indent to 0
+    ;; since it did not find any suitable line
+    (if (= (forward-line -1) -1)
+        gas-indentation
+      (setq token (gas-next-token))
+      ;; if last line is empty (0 indent), recursively evaluate more lines
+      (cond ((equal token "")
+             (gas-calculate-indentation))
+
+            ((string-match-p gas-opening-blocks-regex token)
+             (+ (current-indentation) gas-indentation))
+
+            (t
+             (current-indentation))))))
+
 (defun gas-calculate-indentation ()
-  "Calculate de indentation based on the previous line and sets `gas-current-indentation'
-and `gas-last-evaluated-token'"
+  "Calculate de indentation based on the first token of the current line and previous lines
+indentation"
   (save-excursion
-    (let ((line (forward-line -1)) (indt (current-indentation)) (token nil))
-      ;; If beginning of buffer is reached should indent to 0
-      ;; since it did not find any suitable line
-      (if (= line -1)
-          (progn
-            (setq gas-current-indentation 0)
-            (setq gas-last-evaluated-token ""))
-
-        (setq token (gas-next-token))
-        ;; if last line is empty (0 indent), recursively evaluate more lines
-        (cond ((equal token "")
-               (gas-calculate-indentation))
-
-              ((string-match-p gas-opening-blocks-regex token)
-               (setq gas-current-indentation (+ indt gas-indentation)))
-
-              (t
-               (setq gas-current-indentation indt)))))))
+    (let ((token (progn (beginning-of-line) (gas-next-token)))
+          (prev-indt (gas-calculate-indentation-from-prev-lines)))
+      (if (string-match-p gas-closing-blocks-regex token)
+          (- prev-indt gas-indentation)
+        prev-indt))))
 
 (defun gas-manual-indentation ()
   "Manual indentation for lines. The indentation is a multiple of `gas-indentation' and
 is calculated depending how many times `indent-for-tab-command' is executed in a row"
-  (let ((indt (* gas-indentation (- gas-consecutive-indentation 1))))
-    (indent-line-to indt)))
+  (save-excursion
+    (indent-line-to (* gas-indentation (- gas-consecutive-indentation 1)))))
 
 (defun gas-indent-line ()
   "Indentation function used to calculate the indentation level."
   (interactive)
-
   ;; clean `gas-consecutive-indentation' if last command executed is not itself
   (if (eq last-command 'indent-for-tab-command)
       (setq gas-consecutive-indentation (+ 1 gas-consecutive-indentation))
     (setq gas-consecutive-indentation 0))
-
   ;; Heuristic to determine if line needs more or less indentation
-  (save-excursion
-    (let ((token nil))
-      (if (not (= gas-consecutive-indentation 0))
-          (gas-manual-indentation)
-        (gas-calculate-indentation)
-        (beginning-of-line)
-        ;; get token of the current line and evaluate to set proper indentation
-        (setq token (gas-next-token))
-        (if (string-match-p gas-closing-blocks-regex token)
-            (indent-line-to (- gas-current-indentation gas-indentation))
-          (indent-line-to gas-current-indentation)))))
-
+  (if (not (= gas-consecutive-indentation 0))
+      (gas-manual-indentation)
+    (save-excursion
+      (indent-line-to (gas-calculate-indentation))))
   ;; move pointer to the beginning of the line if it is before the indentation
-  (if (< (current-column) gas-current-indentation)
-      (move-to-column gas-current-indentation)))
+  (if (< (current-column) (current-indentation))
+      (move-to-column (current-indentation))))
 
 ;;;###autoload
 (define-derived-mode gas-mode prog-mode "gas"
