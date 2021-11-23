@@ -46,6 +46,9 @@ relies on `gas-initial-indent'to set the indentation needed.")
 (defvar gas-tag-regex "[.a-zA-Z0-9_]+?:"
   "Regex of tags")
 
+(defvar gas-directive-regex "\\.[a-zA-Z0-9_]+"
+  "Regex of directives")
+
 (defcustom gas-initial-indent 0
   "The indentation to use for the elements matched with `gas-opening-blocks-regex'"
   :type 'integer
@@ -177,7 +180,8 @@ to the nearest newline or space character"
   (setq gas-last-evaluated-token (gas-read-token))) ;; set for debugging
 
 (defun gas-calculate-indentation-from-prev-lines ()
-  "Calculate de indentation based on the previous lines"
+  "Calculate de indentation based on the previous lines and return the indentation and
+the token used to calculate the indentation as a cons cell"
   (let ((token nil))
     ;; If beginning of buffer is reached should indent to 0
     ;; since it did not find any suitable line
@@ -186,23 +190,38 @@ to the nearest newline or space character"
       (setq token (gas-next-token))
       ;; if last line is empty (0 indent), recursively evaluate more lines
       (cond ((equal token "")
-             (gas-calculate-indentation))
+             (gas-calculate-indentation-from-prev-lines))
 
             ((string-match-p gas-opening-blocks-regex token)
-             (+ (current-indentation) gas-indentation))
+             (cons (+ (current-indentation) gas-indentation) token))
 
             (t
-             (current-indentation))))))
+             (cons (current-indentation) token))))))
 
 (defun gas-calculate-indentation ()
   "Calculate de indentation based on the first token of the current line and previous lines
-indentation"
+indentation and token"
   (save-excursion
     (let ((token (progn (beginning-of-line) (gas-next-token)))
           (prev-indt (gas-calculate-indentation-from-prev-lines)))
-      (if (string-match-p gas-closing-blocks-regex token)
-          (- prev-indt gas-indentation)
-        prev-indt))))
+      (cond
+       ((string-match-p gas-closing-blocks-regex token)
+        (- (car prev-indt) gas-indentation))
+
+       ((string-match-p gas-tag-regex (cdr prev-indt))
+        (if (string-equal "" (gas-next-token))
+            (+ gas-indentation (car prev-indt))
+          (car prev-indt)))
+
+       ((string-match-p gas-directive-regex (cdr prev-indt))
+        (setq token (gas-calculate-indentation-from-prev-lines))
+        (if (string-match-p gas-tag-regex (cdr token))
+            (car token)
+          (car prev-indt)))
+
+       (t
+        (message "%s" prev-indt)
+        (car prev-indt))))))
 
 (defun gas-manual-indentation ()
   "Manual indentation for lines. The indentation is a multiple of `gas-indentation' and
