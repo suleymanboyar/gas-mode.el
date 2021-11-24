@@ -37,8 +37,8 @@
   :group 'languages)
 
 (defvar gas-opening-blocks-regex (regexp-opt '(".section" ".macro" ".rept"))
-  "Regex that matches elements that should have less or null indentation,
-relies on `gas-initial-indent'to set the indentation needed.")
+  "Regex that matches elements that marks the beginning a blocks, which means
+new lines will have a relative indentation from these elements.")
 
 (defvar gas-closing-blocks-regex (regexp-opt '(".endm" ".endr"))
   "Regex of the directives use to close another directives")
@@ -50,7 +50,7 @@ relies on `gas-initial-indent'to set the indentation needed.")
   "Regex of directives")
 
 (defcustom gas-initial-indent 0
-  "The indentation to use for the elements matched with `gas-opening-blocks-regex'"
+  "The indentation to use for '.section' directives."
   :type 'integer
   :group 'gas)
 
@@ -186,7 +186,7 @@ the token used to calculate the indentation as a cons cell"
     ;; If beginning of buffer is reached should indent to 0
     ;; since it did not find any suitable line
     (if (= (forward-line -1) -1)
-        gas-indentation
+        (cons gas-indentation "")
       (setq token (gas-next-token))
       ;; if last line is empty (0 indent), recursively evaluate more lines
       (cond ((equal token "")
@@ -205,6 +205,9 @@ indentation and token"
     (let ((token (progn (beginning-of-line) (gas-next-token)))
           (prev-indt (gas-calculate-indentation-from-prev-lines)))
       (cond
+       ((string-match-p ".section" token)
+        gas-initial-indent)
+
        ((string-match-p gas-closing-blocks-regex token)
         (- (car prev-indt) gas-indentation))
 
