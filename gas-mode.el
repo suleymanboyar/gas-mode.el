@@ -69,7 +69,7 @@ new lines will have a relative indentation from these elements.")
     (modify-syntax-entry ?* ". 23b" table)
     (modify-syntax-entry ?# "<" table)
     (modify-syntax-entry ?\n ">" table)
-    (modify-syntax-entry ?_ "w" table)
+    (modify-syntax-entry ?_ "_" table)
     table)
   "Syntax table to use in Gas mode")
 
@@ -154,6 +154,9 @@ reports")
 (defvar gas-current-indentation 0
   "Helps to avoid calculation when the indentation is trivial")
 
+(defvar gas-manual-indentation-level 0
+  "Stores the indentation when the first manual indentation is used")
+
 (defun gas-move-to-first-char ()
   "Move point to the first character that is not a whitespace"
   (let ((char (following-char)))
@@ -229,19 +232,21 @@ indentation and token"
 (defun gas-manual-indentation ()
   "Manual indentation for lines. The indentation is a multiple of `gas-indentation' and
 is calculated depending how many times `indent-for-tab-command' is executed in a row"
+  (setq gas-consecutive-indentation (1+ gas-consecutive-indentation))
   (save-excursion
-    (indent-line-to (* gas-indentation (- gas-consecutive-indentation 1)))))
+    (when (= gas-consecutive-indentation 1)
+      (setq gas-manual-indentation-level (current-indentation)))
+    (when (= (* gas-indentation (1- gas-consecutive-indentation)) gas-manual-indentation-level)
+      (setq gas-consecutive-indentation (1+ gas-consecutive-indentation)))
+    (indent-line-to (* gas-indentation (1- gas-consecutive-indentation)))))
 
 (defun gas-indent-line ()
   "Indentation function used to calculate the indentation level."
   (interactive)
-  ;; clean `gas-consecutive-indentation' if last command executed is not itself
-  (if (eq last-command 'indent-for-tab-command)
-      (setq gas-consecutive-indentation (+ 1 gas-consecutive-indentation))
-    (setq gas-consecutive-indentation 0))
   ;; Heuristic to determine if line needs more or less indentation
-  (if (not (= gas-consecutive-indentation 0))
+  (if (eq last-command 'indent-for-tab-command)
       (gas-manual-indentation)
+    (setq gas-consecutive-indentation 0)
     (save-excursion
       (indent-line-to (gas-calculate-indentation))))
   ;; move pointer to the beginning of the line if it is before the indentation
