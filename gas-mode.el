@@ -226,7 +226,6 @@ indentation and token"
           (car prev-indt)))
 
        (t
-        (message "%s" prev-indt)
         (car prev-indt))))))
 
 (defun gas-manual-indentation ()
