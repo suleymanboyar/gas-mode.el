@@ -74,7 +74,7 @@ new lines will have a relative indentation from these elements.")
   "Syntax table to use in Gas mode")
 
 (defconst gas-instructions
-  ("mov" "movb" "movw" "movl" "movq"
+  '("mov" "movb" "movw" "movl" "movq"
    "push" "pushb" "pushw" "pushl" "pushq"
    "pop" "popb" "popw" "popl" "popq"
    "add" "addb" "addw" "addl" "addq"
